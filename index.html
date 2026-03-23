@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Escola Pia Catalunya — Direcció General</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231E3F87'/><text x='16' y='22' text-anchor='middle' font-family='system-ui,sans-serif' font-size='16' font-weight='700' fill='%237AB53E'>EP</text></svg>" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: #F4F7FC;
+      color: #1E3F87;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-weight: 400;
+      line-height: 1.6;
+    }
+    body { display: flex; flex-direction: column; }
+
+    /* ── Header ───────────────────────────────────────────────────── */
+    header {
+      flex-shrink: 0;
+      border-top: 4px solid #7AB53E;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(30,63,135,.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 12px 24px;
+      z-index: 10;
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .header-brand h1 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1A3A6B;
+      letter-spacing: 0.01em;
+      line-height: 1.3;
+    }
+    .header-brand h1 small {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 400;
+      color: #64748B;
+      letter-spacing: 0;
+    }
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .badge-update {
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: #EEF2FF;
+      color: #1E3F87;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+      border: 1px solid #C7D2FE;
+    }
+    .badge-update span { color: #1A3A6B; }
+    .badge-countdown {
+      font-size: 0.7rem;
+      background: #F4F7FC;
+      color: #64748B;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid #DDE4F0;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── KPI bar ──────────────────────────────────────────────────── */
+    .kpi-bar {
+      flex-shrink: 0;
+      display: flex;
+      gap: 12px;
+      padding: 12px 24px;
+      background: #F4F7FC;
+      border-bottom: 1px solid #DDE4F0;
+    }
+    .kpi-card {
+      flex: 1;
+      background: #fff;
+      border-radius: 8px;
+      border-left: 4px solid #DDE4F0;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+      transition: box-shadow .15s, transform .15s;
+      user-select: none;
+      min-width: 0;
+    }
+    .kpi-card:hover {
+      box-shadow: 0 4px 14px rgba(0,0,0,.1);
+      transform: translateY(-1px);
+    }
+    .kpi-card.kpi-active {
+      box-shadow: 0 4px 16px rgba(0,0,0,.12);
+      transform: translateY(-2px);
+    }
+
+    /* State borders and number colors */
+    .kpi-card.urgents { border-left-color: #DC2626; }
+    .kpi-card.risc    { border-left-color: #F59E0B; }
+    .kpi-card.control { border-left-color: #7AB53E; }
+
+    .kpi-num {
+      font-size: 1.8rem;
+      font-weight: 700;
+      line-height: 1;
+      color: #1E3F87;
+    }
+    .kpi-card.urgents .kpi-num { color: #DC2626; }
+    .kpi-card.risc    .kpi-num { color: #D97706; }
+    .kpi-card.control .kpi-num { color: #7AB53E; }
+
+    .kpi-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 4px;
+      color: #64748B;
+    }
+
+    /* ── Main layout ──────────────────────────────────────────────── */
+    .main { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+
+    #map { width: 42%; height: 100%; flex-shrink: 0; }
+
+    /* ── Panel ────────────────────────────────────────────────────── */
+    .panel {
+      width: 58%;
+      height: 100%;
+      background: #F4F6F9;
+      border-left: 1px solid #DDE4F0;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .panel-header {
+      flex-shrink: 0;
+      padding: 16px 16px 12px;
+      background: #F4F6F9;
+      border-bottom: 1px solid #DDE4F0;
+      transition: background .2s;
+    }
+    .panel-header.centre-actiu {
+      background: #EEF4FF;
+      border-bottom-color: #BFCFEE;
+    }
+    .panel-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #1E3F87;
+    }
+
+    /* ── Context bar ──────────────────────────────────────────────── */
+    .context-bar {
+      margin-top: 8px;
+      min-height: 26px;
+      display: flex;
+      align-items: center;
+    }
+    .context-global {
+      font-size: 0.72rem;
+      color: #94A3B8;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .context-global::before {
+      content: '';
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #CBD5E1;
+    }
+    .context-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: #1E3F87;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 8px 4px 10px;
+      border-radius: 20px;
+      max-width: 100%;
+    }
+    .context-chip-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #7AB53E;
+      flex-shrink: 0;
+    }
+    .context-chip-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .context-chip-clear {
+      background: rgba(255,255,255,.2);
+      border: none;
+      color: #fff;
+      border-radius: 50%;
+      width: 18px; height: 18px;
+      font-size: 0.65rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background .15s;
+      line-height: 1;
+    }
+    .context-chip-clear:hover { background: rgba(255,255,255,.35); }
+
+    /* ── Filters ──────────────────────────────────────────────────── */
+    .filter-bar { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .filter-row { display: flex; gap: 8px; }
+
+    .filter-select, .filter-input {
+      flex: 1;
+      background: #fff;
+      color: #1E3F87;
+      border: 1px solid #DDE4F0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.76rem;
+      outline: none;
+      min-width: 0;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .filter-select:focus, .filter-input:focus {
+      border-color: #1E3F87;
+      box-shadow: 0 0 0 3px rgba(30,63,135,.1);
+    }
+    .filter-select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%231E3F87'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 9px center;
+      padding-right: 26px;
+      cursor: pointer;
+    }
+    .filter-select option { background: #fff; color: #1E3F87; }
+    .filter-input::placeholder { color: #94A3B8; }
+    .filter-row-bottom { align-items: center; }
+
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.76rem;
+      font-weight: 500;
+      color: #64748B;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .toggle-label input[type="checkbox"] { accent-color: #1E3F87; cursor: pointer; }
+
+    .btn-netejar {
+      margin-left: auto;
+      background: transparent;
+      border: 1px solid #DDE4F0;
+      color: #64748B;
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 0.73rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color .15s, color .15s, background .15s;
+    }
+    .btn-netejar:hover {
+      border-color: #1E3F87;
+      color: #1E3F87;
+      background: #EEF2FF;
+    }
+
+    /* ── Panel list ───────────────────────────────────────────────── */
+    .panel-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .panel-status { font-size: 0.8rem; color: #94A3B8; font-style: italic; }
+    .panel-error  {
+      font-size: 0.8rem;
+      color: #DC2626;
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+
+    /* ── Empty state ──────────────────────────────────────────────── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 40px 16px;
+      color: #94A3B8;
+      text-align: center;
+    }
+    .empty-state svg { opacity: .5; }
+    .empty-state p   { font-size: 0.85rem; line-height: 1.6; }
+
+    /* ── Incidència cards ─────────────────────────────────────────── */
+    .inc-card {
+      background: #fff;
+      border-radius: 8px;
+      border-left: 4px solid #DDE4F0;
+      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex-shrink: 0;
+      transition: box-shadow .15s;
+    }
+    .inc-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+
+    /* Left border color by state via :has() */
+    .inc-card:has(.estat-badge.Urgent)    { border-left-color: #DC2626; }
+    .inc-card:has(.estat-badge.Risc)      { border-left-color: #F59E0B; }
+    .inc-card:has(.estat-badge.Controlat) { border-left-color: #7AB53E; }
+    .inc-card.tancada                     { border-left-color: #CBD5E1; }
+
+    .inc-card-header { display: flex; align-items: center; gap: 8px; }
+
+    .estat-badge {
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .estat-badge.Urgent    { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+    .estat-badge.Risc      { background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A; }
+    .estat-badge.Controlat { background: #F0FDF4; color: #16A34A; border: 1px solid #BBF7D0; }
+
+    .inc-centre {
+      font-size: 0.72rem;
+      color: #64748B;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .inc-titol {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #1A3A6B;
+      line-height: 1.35;
+    }
+
+    .inc-desc {
+      font-size: 0.76rem;
+      color: #64748B;
+      line-height: 1.5;
+    }
+
+    .inc-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.69rem;
+      color: #94A3B8;
+    }
+
+    /* Closed */
+    .inc-card.tancada { opacity: .55; }
+    .inc-card.tancada .inc-titol {
+      text-decoration: line-through;
+      color: #64748B;
+    }
+
+    /* ── Responsive ≤ 900px ───────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .main { flex-direction: column; overflow: auto; }
+      #map  { width: 100%; height: 45vh; flex-shrink: 0; }
+      .panel {
+        width: 100%;
+        height: auto;
+        border-left: none;
+        border-top: 1px solid #DDE4F0;
+        max-height: 55vh;
+      }
+      .kpi-bar { padding: 8px 16px; gap: 8px; }
+      .kpi-num { font-size: 1.4rem; }
+      header   { padding: 10px 16px; }
+    }
+
+    @media (max-width: 600px) {
+      .kpi-label { display: none; }
+      .kpi-num   { font-size: 1.2rem; }
+      .badge-update, .badge-countdown { font-size: 0.62rem; }
+      .header-brand h1 { font-size: 0.85rem; }
+      .header-brand img { height: 36px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-brand">
+      <img src="LOGO-EPC.png" height="52" alt="Escola Pia de Catalunya" />
+      <h1>
+        Escola Pia Catalunya
+        <small>Direcció General &mdash; Seguiment d'Incidències</small>
+      </h1>
+    </div>
+    <div class="header-meta">
+      <div class="badge-update" id="badge-update">Actualitzat: <span id="data-update">—</span></div>
+      <div class="badge-countdown" id="badge-countdown">Refresc en —:——</div>
+    </div>
+  </header>
+
+  <div class="kpi-bar">
+    <div class="kpi-card" id="kpi-card-total" data-estat="">
+      <span class="kpi-num" id="kpi-total">—</span>
+      <span class="kpi-label">Total obertes</span>
+    </div>
+    <div class="kpi-card urgents" id="kpi-card-urgents" data-estat="Urgent">
+      <span class="kpi-num" id="kpi-urgents">—</span>
+      <span class="kpi-label">Urgents</span>
+    </div>
+    <div class="kpi-card risc" id="kpi-card-risc" data-estat="Risc">
+      <span class="kpi-num" id="kpi-risc">—</span>
+      <span class="kpi-label">En risc</span>
+    </div>
+    <div class="kpi-card control" id="kpi-card-control" data-estat="Controlat">
+      <span class="kpi-num" id="kpi-control">—</span>
+      <span class="kpi-label">Controlades</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <div id="map"></div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Incidències</span>
+        <div class="context-bar" id="context-bar"></div>
+        <div class="filter-bar">
+          <div class="filter-row">
+            <select class="filter-select" id="filter-centre">
+              <option value="">Tots els centres</option>
+            </select>
+            <select class="filter-select" id="filter-estat">
+              <option value="">Tots els estats</option>
+              <option value="Urgent">Urgent</option>
+              <option value="Risc">Risc</option>
+              <option value="Controlat">Controlat</option>
+            </select>
+          </div>
+          <div class="filter-row">
+            <input class="filter-input" id="filter-text" type="search"
+                   placeholder="Cerca títol o descripció…" autocomplete="off" />
+          </div>
+          <div class="filter-row filter-row-bottom">
+            <label class="toggle-label">
+              <input type="checkbox" id="filter-tancades" />
+              Mostrar tancades
+            </label>
+            <button class="btn-netejar" id="btn-netejar">Netejar filtres</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel-list" id="panel-list">
+        <span class="panel-status" id="panel-status">Carregant...</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ── Configuració ───────────────────────────────────────────── */
+    const CONFIG = {
+      SHEET_CSV_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQJ5NZHyF7EkiZUpwFfRIJg5Z11N9aRRLZ1lAu-d1NM27hMuUk1-iwISXTfwB0zox68GTgmvZ99QhJ8/pub?gid=0&single=true&output=csv',
+      REFRESH_INTERVAL_MS: 5 * 60 * 1000
+    };
+    const FALLBACK_CSV = 'escola_pia_incidencies.csv';
+
+    const CENTROS_GPS = {
+      // ── Barcelona Ciutat ─────────────────────────────────────────
+      "Escola Pia Balmes":                   { lat: 41.3920, lng: 2.1530 },
+      "Escola Pia Luz Casanova":             { lat: 41.4280, lng: 2.1760 },
+      "Escola Pia Nostra Senyora":           { lat: 41.3930, lng: 2.1620 },
+      "Escola Pia Sant Antoni":              { lat: 41.3789, lng: 2.1598 },
+      "Escola Pia Sant Miquel":              { lat: 41.3970, lng: 2.1640 },
+      "Escola Pia Sarrià":                   { lat: 41.4036, lng: 2.1189 },
+      "Escola Adhara":                       { lat: 41.3780, lng: 2.1590 },
+      "Camins Fundació":                     { lat: 41.3782, lng: 2.1592 },
+      // ── Resta de Catalunya ───────────────────────────────────────
+      "Escola Pia d'Igualada":              { lat: 41.5794, lng: 1.6189 },
+      "Escola Pia d'Olot":                  { lat: 42.1833, lng: 2.4897 },
+      "Escola Pia de Balaguer":              { lat: 41.7911, lng: 0.8088 },
+      "Escola Pia de Caldes de Montbui":     { lat: 41.6299, lng: 2.1664 },
+      "Escola Pia de Calella":               { lat: 41.6139, lng: 2.7664 },
+      "Escola Pia de Granollers":            { lat: 41.6080, lng: 2.2869 },
+      "Escola Pia de Mataró":                { lat: 41.5396, lng: 2.4445 },
+      "Escola Pia de Moià":                  { lat: 41.8130, lng: 2.0889 },
+      "Escola Pia de Sabadell":              { lat: 41.5432, lng: 2.1082 },
+      "Escola Pia de Salt":                  { lat: 41.9833, lng: 2.7897 },
+      "Escola Pia de Sitges":                { lat: 41.2369, lng: 1.8111 },
+      "Escola Pia de Tàrrega":               { lat: 41.6478, lng: 1.1390 },
+      "Escola Pia de Terrassa":              { lat: 41.5636, lng: 2.0089 },
+      "Escola Pia de Vilanova i la Geltrú":  { lat: 41.2233, lng: 1.7247 },
+      // ── Centres associats (al costat de Sant Antoni) ────────────
+      "Escola Pia Online":                   { lat: 41.3796, lng: 2.1615 },
+      "LID Barcelona":                       { lat: 41.3782, lng: 2.1615 }
+    };
+
+    /* ── Constants ──────────────────────────────────────────────── */
+    const ESTAT_COLOR    = { Urgent: "#DC2626", Risc: "#F59E0B", Controlat: "#7AB53E" };
+    const ESTAT_PRIORITY = { Urgent: 0, Risc: 1, Controlat: 2 };
+
+    /* ── Estat global ───────────────────────────────────────────── */
+    let allRows   = [];
+    let centreGeo = {};
+    const filters = { centre: '', estat: '', mostrarTancades: false, text: '' };
+
+    /* ── Countdown ──────────────────────────────────────────────── */
+    let nextRefreshAt = Date.now() + CONFIG.REFRESH_INTERVAL_MS;
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+
+    setInterval(() => {
+      const remaining = Math.max(0, nextRefreshAt - Date.now());
+      const m = Math.floor(remaining / 60000);
+      const s = Math.floor((remaining % 60000) / 1000);
+      document.getElementById('badge-countdown').textContent = `Refresc en ${m}:${pad(s)}`;
+    }, 1000);
+
+    /* ── Mapa ───────────────────────────────────────────────────── */
+    const map = L.map('map', { center: [41.7, 1.8], zoom: 8, zoomControl: true });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+      subdomains: 'abcd', maxZoom: 19
+    }).addTo(map);
+    const markerLayer = L.layerGroup().addTo(map);
+
+    /* ── Filtre ─────────────────────────────────────────────────── */
+    function applyFilters(rows) {
+      const q = filters.text.toLowerCase().trim();
+      return rows.filter(r => {
+        if (!filters.mostrarTancades && r.Situacio !== 'Obert') return false;
+        if (filters.centre && r.Centro_Escolar !== filters.centre) return false;
+        if (filters.estat  && r.Estat !== filters.estat)           return false;
+        if (q && !r.Titol_Incidencia.toLowerCase().includes(q) &&
+                 !(r.Descripcio || '').toLowerCase().includes(q)) return false;
+        return true;
+      });
+    }
+
+    /* ── Context bar ────────────────────────────────────────────── */
+    function updateContextBar() {
+      const bar    = document.getElementById('context-bar');
+      const header = bar.closest('.panel-header');
+      if (filters.centre) {
+        header.classList.add('centre-actiu');
+        bar.innerHTML = `
+          <span class="context-chip">
+            <span class="context-chip-dot"></span>
+            <span class="context-chip-name">${filters.centre}</span>
+            <button class="context-chip-clear" id="btn-clear-centre" title="Tornar a visió global">✕</button>
+          </span>`;
+        document.getElementById('btn-clear-centre').addEventListener('click', () => {
+          filters.centre = '';
+          document.getElementById('filter-centre').value = '';
+          refresh();
+        });
+      } else {
+        header.classList.remove('centre-actiu');
+        bar.innerHTML = `<span class="context-global">Visió global · tots els centres</span>`;
+      }
+    }
+
+    /* ── Refresh ────────────────────────────────────────────────── */
+    function refresh() {
+      const filtered = applyFilters(allRows);
+      renderKPIs();
+      renderMarkers();
+      renderPanel(filtered);
+      syncKPIActive();
+      updateContextBar();
+    }
+
+    /* ── KPIs (ignorant el filtre d'estat) ─────────────────────── */
+    function renderKPIs() {
+      const q = filters.text.toLowerCase().trim();
+      const base = allRows.filter(r => {
+        if (r.Situacio !== 'Obert') return false;
+        if (filters.centre && r.Centro_Escolar !== filters.centre) return false;
+        if (q && !r.Titol_Incidencia.toLowerCase().includes(q) &&
+                 !(r.Descripcio || '').toLowerCase().includes(q)) return false;
+        return true;
+      });
+      document.getElementById('kpi-total').textContent   = base.length;
+      document.getElementById('kpi-urgents').textContent = base.filter(r => r.Estat === 'Urgent').length;
+      document.getElementById('kpi-risc').textContent    = base.filter(r => r.Estat === 'Risc').length;
+      document.getElementById('kpi-control').textContent = base.filter(r => r.Estat === 'Controlat').length;
+    }
+
+    function syncKPIActive() {
+      const map_ = { total: '', urgents: 'Urgent', risc: 'Risc', control: 'Controlat' };
+      Object.entries(map_).forEach(([id, val]) => {
+        document.getElementById(`kpi-card-${id}`)
+          .classList.toggle('kpi-active', filters.estat === val);
+      });
+    }
+
+    /* ── Donut icon SVG ─────────────────────────────────────────── */
+    function makeDonutIcon(stats, total, isSelected) {
+      const size  = isSelected ? 68 : 52;
+      const cx    = size / 2;
+      const cy    = size / 2;
+      const r     = isSelected ? 26 : 19;
+      const sw    = isSelected ? 9 : 7;
+      const circ  = 2 * Math.PI * r;
+
+      // Segments in priority order
+      const segs = [
+        { color: '#DC2626', n: stats.Urgent   || 0 },
+        { color: '#F59E0B', n: stats.Risc     || 0 },
+        { color: '#7AB53E', n: stats.Controlat || 0 },
+      ].filter(s => s.n > 0);
+
+      // Build SVG arc segments using stroke-dasharray
+      // rotate(-90) starts drawing from 12 o'clock
+      // negative dashoffset advances the start point clockwise
+      let acc = 0;
+      const segSVG = segs.map(s => {
+        const dash = (s.n / total) * circ;
+        const el = `<circle cx="${cx}" cy="${cy}" r="${r}"
+          fill="none" stroke="${s.color}" stroke-width="${sw}"
+          stroke-dasharray="${dash.toFixed(3)} ${(circ - dash).toFixed(3)}"
+          stroke-dashoffset="${(-acc).toFixed(3)}"
+          transform="rotate(-90 ${cx} ${cy})"
+          stroke-linecap="butt"/>`;
+        acc += dash;
+        return el;
+      });
+
+      const innerR = r - sw / 2 - 1.5;   // white fill radius
+      const bgR    = r + sw / 2 + 2;     // white halo radius
+      const fs     = total >= 10 ? (isSelected ? 13 : 10) : (isSelected ? 16 : 13);
+
+      // Dashed blue ring when selected
+      const selRing = isSelected
+        ? `<circle cx="${cx}" cy="${cy}" r="${bgR + 4}"
+            fill="none" stroke="#3B82F6" stroke-width="2.5"
+            stroke-dasharray="5 3.5" opacity="0.85"/>`
+        : '';
+
+      return `<svg width="${size}" height="${size}"
+        viewBox="0 0 ${size} ${size}"
+        xmlns="http://www.w3.org/2000/svg"
+        style="overflow:visible;display:block">
+        ${selRing}
+        <!-- White halo for map contrast -->
+        <circle cx="${cx}" cy="${cy}" r="${bgR}" fill="white" opacity="0.92"/>
+        <!-- Gray track -->
+        <circle cx="${cx}" cy="${cy}" r="${r}"
+          fill="none" stroke="#E2E8F0" stroke-width="${sw}"/>
+        <!-- Colored segments -->
+        ${segSVG.join('\n        ')}
+        <!-- White center fill -->
+        <circle cx="${cx}" cy="${cy}" r="${innerR}" fill="white"/>
+        <!-- Total label -->
+        <text x="${cx}" y="${cy + 0.5}"
+          text-anchor="middle" dominant-baseline="central"
+          font-family="system-ui,-apple-system,sans-serif"
+          font-size="${fs}" font-weight="700"
+          fill="${isSelected ? '#1E3F87' : '#1A3A6B'}">${total}</text>
+      </svg>`;
+    }
+
+    /* ── Marcadors ──────────────────────────────────────────────── */
+    function renderMarkers() {
+      markerLayer.clearLayers();
+
+      // Aggregate open incident counts per centre
+      const stats = {};
+      allRows.forEach(r => {
+        const k = r.Centro_Escolar;
+        if (!stats[k]) stats[k] = { Urgent: 0, Risc: 0, Controlat: 0, total: 0 };
+        if (r.Situacio === 'Obert' && r.Estat in stats[k]) {
+          stats[k][r.Estat]++;
+          stats[k].total++;
+        }
+      });
+
+      Object.entries(centreGeo).forEach(([nom, geo]) => {
+        const s          = stats[nom] || { Urgent: 0, Risc: 0, Controlat: 0, total: 0 };
+        const total      = s.total;
+        const isSelected = filters.centre === nom;
+
+        const onClick = () => {
+          filters.centre = filters.centre === nom ? '' : nom;
+          document.getElementById('filter-centre').value = filters.centre;
+          refresh();
+        };
+
+        // Centre with no open incidents → small neutral dot
+        if (total === 0) {
+          L.circleMarker([geo.lat, geo.lng], {
+            radius: 5, fillColor: '#CBD5E1',
+            color: '#fff', weight: 2, fillOpacity: 0.85
+          })
+            .on('mouseover', function () {
+              this.bindPopup(
+                `<div style="font-family:system-ui;font-size:0.8rem">
+                  <strong style="color:#1A3A6B">${nom}</strong><br>
+                  <span style="color:#94A3B8">Sense incidències obertes</span>
+                </div>`
+              ).openPopup();
+            })
+            .on('click', onClick)
+            .addTo(markerLayer);
+          return;
+        }
+
+        // Build rich popup content
+        const dot  = (c) => `<span style="display:inline-block;width:9px;height:9px;
+          border-radius:50%;background:${c};flex-shrink:0"></span>`;
+        const row  = (color, label, n) => n
+          ? `<div style="display:flex;align-items:center;gap:7px">
+              ${dot(color)}
+              <span style="color:#374151">${n} ${label}</span>
+             </div>`
+          : '';
+
+        const popupHTML = `
+          <div style="font-family:system-ui;min-width:175px;padding:2px 0">
+            <div style="font-weight:700;color:#1A3A6B;font-size:0.88rem;
+              margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #E2E8F0">
+              ${nom}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px;font-size:0.78rem">
+              ${row('#DC2626', `Urgent${s.Urgent   !== 1 ? 's' : ''}`,     s.Urgent)}
+              ${row('#F59E0B', 'En risc',                                  s.Risc)}
+              ${row('#7AB53E', `Controlat${s.Controlat !== 1 ? 'es' : ''}`, s.Controlat)}
+            </div>
+            <div style="margin-top:8px;font-size:0.72rem;color:#94A3B8">
+              ${total} incidènci${total !== 1 ? 'es' : 'a'} ober${total !== 1 ? 'tes' : 'ta'}
+            </div>
+          </div>`;
+
+        const size = isSelected ? 68 : 52;
+        const icon = L.divIcon({
+          html:        makeDonutIcon(s, total, isSelected),
+          className:   '',
+          iconSize:    [size, size],
+          iconAnchor:  [size / 2, size / 2],
+          popupAnchor: [0, -(size / 2 + 6)]
+        });
+
+        L.marker([geo.lat, geo.lng], { icon, zIndexOffset: isSelected ? 1000 : 0 })
+          .bindPopup(popupHTML, { maxWidth: 220 })
+          .on('mouseover', function () { this.openPopup(); })
+          .on('mouseout',  function () { this.closePopup(); })
+          .on('click', onClick)
+          .addTo(markerLayer);
+      });
+    }
+
+    /* ── Panel list ─────────────────────────────────────────────── */
+    function renderPanel(filtered) {
+      const list   = document.getElementById('panel-list');
+      const status = document.getElementById('panel-status');
+      list.querySelectorAll('.inc-card, .empty-state').forEach(el => el.remove());
+
+      const sorted = [...filtered].sort((a, b) => {
+        const pa = (a.Situacio !== 'Obert' ? 10 : 0) + (ESTAT_PRIORITY[a.Estat] ?? 9);
+        const pb = (b.Situacio !== 'Obert' ? 10 : 0) + (ESTAT_PRIORITY[b.Estat] ?? 9);
+        return pa - pb;
+      });
+
+      status.textContent = '';
+      status.className   = 'panel-status';
+
+      if (sorted.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.innerHTML = `
+          <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <p>Cap incidència trobada<br>amb els filtres actuals</p>
+        `;
+        list.appendChild(empty);
+        return;
+      }
+
+      sorted.forEach(inc => {
+        const isTancada = inc.Situacio !== 'Obert';
+        const desc      = (inc.Descripcio || '').trim();
+
+        const card = document.createElement('div');
+        card.className = 'inc-card' + (isTancada ? ' tancada' : '');
+
+        const hasDesc = desc.length > 0;
+
+        card.innerHTML = `
+          <div class="inc-card-header">
+            <span class="estat-badge ${inc.Estat}">${inc.Estat}</span>
+            <span class="inc-centre">${inc.Centro_Escolar}</span>
+          </div>
+          <div class="inc-titol">${inc.Titol_Incidencia}</div>
+          ${hasDesc ? `<div class="inc-desc">${desc}</div>` : ''}
+          <div class="inc-meta">
+            <span>${inc.Responsable}</span>
+            <span>${inc.Data_Deteccio}</span>
+          </div>
+        `;
+        list.appendChild(card);
+      });
+
+    }
+
+    /* ── Capçalera: data actualització ─────────────────────────── */
+    function updateHeaderDate(rows) {
+      const dates = rows
+        .map(r => r.Data_Actualitzacio)
+        .filter(Boolean)
+        .sort()
+        .reverse();
+      if (dates.length) document.getElementById('data-update').textContent = dates[0];
+    }
+
+    /* ── Error ──────────────────────────────────────────────────── */
+    function showError(msg) {
+      const status = document.getElementById('panel-status');
+      status.className   = 'panel-error';
+      status.textContent = `⚠ Error carregant dades: ${msg}`;
+    }
+
+    /* ── Dropdown centres (dinàmic des del CSV) ─────────────────── */
+    function populateCentreDropdown() {
+      const sel  = document.getElementById('filter-centre');
+      // Només centres que apareixen al CSV, ordenats alfabèticament
+      const noms = [...new Set(allRows.map(r => r.Centro_Escolar).filter(Boolean))].sort();
+      sel.innerHTML = '<option value="">Tots els centres</option>' +
+        noms.map(n => `<option value="${n}">${n}</option>`).join('');
+      sel.value = filters.centre;
+    }
+
+    /* ── Primer render ──────────────────────────────────────────── */
+    function renderAll(rows) {
+      allRows   = rows;
+      centreGeo = { ...CENTROS_GPS };   // coordenades fixes, independents del CSV
+      updateHeaderDate(rows);
+      populateCentreDropdown();
+      refresh();
+    }
+
+    /* ── Càrrega CSV ────────────────────────────────────────────── */
+    function loadCSV(url) {
+      Papa.parse(url, {
+        download: true, header: true, skipEmptyLines: true,
+        complete(results) {
+          if (!results.data?.length) { showError('Fitxer buit o format incorrecte.'); return; }
+          renderAll(results.data);
+        },
+        error(err) { showError(err.message || "No s'ha pogut llegir el fitxer."); }
+      });
+    }
+
+    function fetchData() {
+      const url = CONFIG.SHEET_CSV_URL.includes('PEGA_AQUI') ? FALLBACK_CSV : CONFIG.SHEET_CSV_URL;
+      nextRefreshAt = Date.now() + CONFIG.REFRESH_INTERVAL_MS;
+      loadCSV(url);
+    }
+
+    /* ── Event listeners ────────────────────────────────────────── */
+    document.getElementById('filter-centre').addEventListener('change', e => {
+      filters.centre = e.target.value; refresh();
+    });
+    document.getElementById('filter-estat').addEventListener('change', e => {
+      filters.estat = e.target.value; refresh();
+    });
+    document.getElementById('filter-text').addEventListener('input', e => {
+      filters.text = e.target.value; refresh();
+    });
+    document.getElementById('filter-tancades').addEventListener('change', e => {
+      filters.mostrarTancades = e.target.checked; refresh();
+    });
+    document.getElementById('btn-netejar').addEventListener('click', () => {
+      filters.centre = ''; filters.estat = ''; filters.mostrarTancades = false; filters.text = '';
+      document.getElementById('filter-centre').value      = '';
+      document.getElementById('filter-estat').value       = '';
+      document.getElementById('filter-text').value        = '';
+      document.getElementById('filter-tancades').checked  = false;
+      refresh();
+    });
+    document.querySelectorAll('.kpi-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const estat = card.dataset.estat;
+        filters.estat = filters.estat === estat ? '' : estat;
+        document.getElementById('filter-estat').value = filters.estat;
+        refresh();
+      });
+    });
+
+    /* ── Inicialització ─────────────────────────────────────────── */
+    fetchData();
+    setInterval(fetchData, CONFIG.REFRESH_INTERVAL_MS);
+  </script>
+
+</body>
+</html>
