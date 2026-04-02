@@ -569,7 +569,7 @@
       <img src="LOGO-EPC.png" height="52" alt="Escola Pia de Catalunya" />
       <h1>
         Escola Pia Catalunya
-        <small>Direcció General &mdash; Seguiment d'Incidències</small>
+        <small>Direcció Escoles &mdash; Seguiment</small>
       </h1>
     </div>
     <div class="header-meta">
@@ -919,6 +919,7 @@
       allRows.forEach(r => {
         if (r.Situacio !== filters.situacio) return;
         if (filters.centre && r.Escola !== filters.centre) return;
+        if (filters.estat  && r[estatField] !== filters.estat) return;
         const k = r.Escola;
         if (!stats[k]) stats[k] = { ...emptyStats, total: 0 };
         const val = r[estatField];
@@ -1187,3 +1188,4 @@
 
 </body>
 </html>
+
