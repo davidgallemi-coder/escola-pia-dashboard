@@ -14,6 +14,89 @@
     /* ── Reset & base ─────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* ── Login overlay ────────────────────────────────────────────── */
+    #login-overlay {
+      position: fixed; inset: 0;
+      background: #F4F7FC;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    #login-overlay.hidden { display: none; }
+    .login-box {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(30,63,135,.12);
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+    .login-logo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .login-logo h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1A3A6B;
+      text-align: center;
+      line-height: 1.3;
+    }
+    .login-logo small {
+      font-size: 0.72rem;
+      color: #64748B;
+      font-weight: 400;
+    }
+    .login-form {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .login-input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #DDE4F0;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: #1E3F87;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      text-align: center;
+      letter-spacing: 0.08em;
+    }
+    .login-input:focus {
+      border-color: #1E3F87;
+      box-shadow: 0 0 0 3px rgba(30,63,135,.1);
+    }
+    .login-input.error { border-color: #DC2626; box-shadow: 0 0 0 3px rgba(220,38,38,.1); }
+    .login-btn {
+      width: 100%;
+      padding: 11px;
+      background: #1E3F87;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .login-btn:hover { background: #1A3A6B; }
+    .login-error {
+      font-size: 0.75rem;
+      color: #DC2626;
+      text-align: center;
+      min-height: 18px;
+    }
+
     html, body {
       height: 100%;
       background: #F4F7FC;
@@ -118,9 +201,9 @@
     }
 
     /* State borders and number colors */
-    .kpi-card.urgents { border-left-color: #DC2626; }
-    .kpi-card.risc    { border-left-color: #F59E0B; }
-    .kpi-card.control { border-left-color: #7AB53E; }
+    .kpi-card.critic   { border-left-color: #DC2626; }
+    .kpi-card.controlat { border-left-color: #F59E0B; }
+    .kpi-card.optim    { border-left-color: #7AB53E; }
 
     .kpi-num {
       font-size: 1.8rem;
@@ -128,9 +211,11 @@
       line-height: 1;
       color: #1E3F87;
     }
-    .kpi-card.urgents .kpi-num { color: #DC2626; }
-    .kpi-card.risc    .kpi-num { color: #D97706; }
-    .kpi-card.control .kpi-num { color: #7AB53E; }
+    .kpi-card.critic    .kpi-num { color: #DC2626; }
+    .kpi-card.controlat .kpi-num { color: #D97706; }
+    .kpi-card.optim     .kpi-num { color: #7AB53E; }
+    .kpi-card.neutral   { border-left-color: #94A3B8; }
+    .kpi-card.neutral   .kpi-num { color: #64748B; }
 
     .kpi-label {
       font-size: 0.65rem;
@@ -349,10 +434,12 @@
     .inc-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
 
     /* Left border color by state via :has() */
-    .inc-card:has(.estat-badge.Urgent)    { border-left-color: #DC2626; }
-    .inc-card:has(.estat-badge.Risc)      { border-left-color: #F59E0B; }
-    .inc-card:has(.estat-badge.Controlat) { border-left-color: #7AB53E; }
-    .inc-card.tancada                     { border-left-color: #CBD5E1; }
+    .inc-card:has(.estat-badge.Critic)      { border-left-color: #DC2626; }
+    .inc-card:has(.estat-badge.Controlat)   { border-left-color: #F59E0B; }
+    .inc-card:has(.estat-badge.Optim)       { border-left-color: #7AB53E; }
+    .inc-card:has(.estat-badge.Insatisfet)  { border-left-color: #DC2626; }
+    .inc-card:has(.estat-badge.Neutral)     { border-left-color: #94A3B8; }
+    .inc-card:has(.estat-badge.Satisfet)    { border-left-color: #7AB53E; }
 
     .inc-card-header { display: flex; align-items: center; gap: 8px; }
 
@@ -366,9 +453,12 @@
       white-space: nowrap;
       flex-shrink: 0;
     }
-    .estat-badge.Urgent    { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
-    .estat-badge.Risc      { background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A; }
-    .estat-badge.Controlat { background: #F0FDF4; color: #16A34A; border: 1px solid #BBF7D0; }
+    .estat-badge.Critic     { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+    .estat-badge.Controlat  { background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A; }
+    .estat-badge.Optim      { background: #F0FDF4; color: #16A34A; border: 1px solid #BBF7D0; }
+    .estat-badge.Insatisfet { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+    .estat-badge.Neutral    { background: #F8FAFC; color: #64748B; border: 1px solid #CBD5E1; }
+    .estat-badge.Satisfet   { background: #F0FDF4; color: #16A34A; border: 1px solid #BBF7D0; }
 
     .inc-centre {
       font-size: 0.72rem;
@@ -404,6 +494,38 @@
       color: #64748B;
     }
 
+    /* ── Situació toggle ─────────────────────────────────────────── */
+    .situacio-toggle {
+      display: flex;
+      background: #E2E8F0;
+      border-radius: 8px;
+      padding: 3px;
+      gap: 3px;
+      margin-top: 10px;
+    }
+    .situacio-btn {
+      flex: 1;
+      padding: 6px 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: transparent;
+      color: #64748B;
+      transition: background .15s, color .15s, box-shadow .15s;
+      white-space: nowrap;
+    }
+    .situacio-btn.active {
+      background: #fff;
+      color: #1E3F87;
+      box-shadow: 0 1px 4px rgba(0,0,0,.1);
+    }
+    .situacio-count {
+      font-weight: 400;
+      opacity: .75;
+    }
+
     /* ── Responsive ≤ 900px ───────────────────────────────────────── */
     @media (max-width: 900px) {
       .main { flex-direction: column; overflow: auto; }
@@ -431,6 +553,21 @@
 </head>
 <body>
 
+  <div id="login-overlay">
+    <div class="login-box">
+      <div class="login-logo">
+        <img src="LOGO-EPC.png" height="56" alt="Escola Pia de Catalunya" />
+        <h2>Escola Pia Catalunya<br><small>Direcció General — Seguiment d'Incidències</small></h2>
+      </div>
+      <form class="login-form" id="login-form" autocomplete="off">
+        <input class="login-input" id="login-password" type="password"
+               placeholder="Contrasenya" autofocus />
+        <button class="login-btn" type="submit">Accedir</button>
+        <div class="login-error" id="login-error"></div>
+      </form>
+    </div>
+  </div>
+
   <header>
     <div class="header-brand">
       <img src="LOGO-EPC.png" height="52" alt="Escola Pia de Catalunya" />
@@ -450,17 +587,17 @@
       <span class="kpi-num" id="kpi-total">—</span>
       <span class="kpi-label">Total obertes</span>
     </div>
-    <div class="kpi-card urgents" id="kpi-card-urgents" data-estat="Urgent">
-      <span class="kpi-num" id="kpi-urgents">—</span>
-      <span class="kpi-label">Urgents</span>
+    <div class="kpi-card critic" id="kpi-card-critic" data-estat="Critic">
+      <span class="kpi-num" id="kpi-critic">—</span>
+      <span class="kpi-label">Crítiques</span>
     </div>
-    <div class="kpi-card risc" id="kpi-card-risc" data-estat="Risc">
-      <span class="kpi-num" id="kpi-risc">—</span>
-      <span class="kpi-label">En risc</span>
-    </div>
-    <div class="kpi-card control" id="kpi-card-control" data-estat="Controlat">
-      <span class="kpi-num" id="kpi-control">—</span>
+    <div class="kpi-card controlat" id="kpi-card-controlat" data-estat="Controlat">
+      <span class="kpi-num" id="kpi-controlat">—</span>
       <span class="kpi-label">Controlades</span>
+    </div>
+    <div class="kpi-card optim" id="kpi-card-optim" data-estat="Optim">
+      <span class="kpi-num" id="kpi-optim">—</span>
+      <span class="kpi-label">Òptimes</span>
     </div>
   </div>
 
@@ -471,6 +608,14 @@
       <div class="panel-header">
         <span class="panel-title">Incidències</span>
         <div class="context-bar" id="context-bar"></div>
+        <div class="situacio-toggle">
+          <button class="situacio-btn active" id="btn-situacio-obert" data-situacio="Obert">
+            Obertes <span class="situacio-count" id="toggle-count-obert"></span>
+          </button>
+          <button class="situacio-btn" id="btn-situacio-tancat" data-situacio="Tancat">
+            Tancades <span class="situacio-count" id="toggle-count-tancat"></span>
+          </button>
+        </div>
         <div class="filter-bar">
           <div class="filter-row">
             <select class="filter-select" id="filter-centre">
@@ -478,9 +623,9 @@
             </select>
             <select class="filter-select" id="filter-estat">
               <option value="">Tots els estats</option>
-              <option value="Urgent">Urgent</option>
-              <option value="Risc">Risc</option>
+              <option value="Critic">Crític</option>
               <option value="Controlat">Controlat</option>
+              <option value="Optim">Òptim</option>
             </select>
           </div>
           <div class="filter-row">
@@ -488,10 +633,6 @@
                    placeholder="Cerca títol o descripció…" autocomplete="off" />
           </div>
           <div class="filter-row filter-row-bottom">
-            <label class="toggle-label">
-              <input type="checkbox" id="filter-tancades" />
-              Mostrar tancades
-            </label>
             <button class="btn-netejar" id="btn-netejar">Netejar filtres</button>
           </div>
         </div>
@@ -512,42 +653,76 @@
 
     const CENTROS_GPS = {
       // ── Barcelona Ciutat ─────────────────────────────────────────
-      "Escola Pia Balmes":                   { lat: 41.3920, lng: 2.1530 },
-      "Escola Pia Luz Casanova":             { lat: 41.4280, lng: 2.1760 },
-      "Escola Pia Nostra Senyora":           { lat: 41.3930, lng: 2.1620 },
-      "Escola Pia Sant Antoni":              { lat: 41.3789, lng: 2.1598 },
-      "Escola Pia Sant Miquel":              { lat: 41.3970, lng: 2.1640 },
-      "Escola Pia Sarrià":                   { lat: 41.4036, lng: 2.1189 },
-      "Escola Adhara":                       { lat: 41.3780, lng: 2.1590 },
-      "Camins Fundació":                     { lat: 41.3782, lng: 2.1592 },
+      "Escola Pia Balmes":                   { lat: 41.3964, lng: 2.1580 },
+      "Escola Pia Luz Casanova":             { lat: 41.3801, lng: 2.1525 },
+      "Escola Pia Nostra Senyora":           { lat: 41.3873, lng: 2.1698 },
+      "Escola Pia Sant Antoni":              { lat: 41.3784, lng: 2.1631 },
+      "Escola Pia Sant Miquel":              { lat: 41.3831, lng: 2.1762 },
+      "Escola Pia Sarrià":                   { lat: 41.4012, lng: 2.1198 },
       // ── Resta de Catalunya ───────────────────────────────────────
-      "Escola Pia d'Igualada":              { lat: 41.5794, lng: 1.6189 },
-      "Escola Pia d'Olot":                  { lat: 42.1833, lng: 2.4897 },
-      "Escola Pia de Balaguer":              { lat: 41.7911, lng: 0.8088 },
-      "Escola Pia de Caldes de Montbui":     { lat: 41.6299, lng: 2.1664 },
-      "Escola Pia de Calella":               { lat: 41.6139, lng: 2.7664 },
-      "Escola Pia de Granollers":            { lat: 41.6080, lng: 2.2869 },
-      "Escola Pia de Mataró":                { lat: 41.5396, lng: 2.4445 },
-      "Escola Pia de Moià":                  { lat: 41.8130, lng: 2.0889 },
-      "Escola Pia de Sabadell":              { lat: 41.5432, lng: 2.1082 },
-      "Escola Pia de Salt":                  { lat: 41.9833, lng: 2.7897 },
-      "Escola Pia de Sitges":                { lat: 41.2369, lng: 1.8111 },
-      "Escola Pia de Tàrrega":               { lat: 41.6478, lng: 1.1390 },
-      "Escola Pia de Terrassa":              { lat: 41.5636, lng: 2.0089 },
-      "Escola Pia de Vilanova i la Geltrú":  { lat: 41.2233, lng: 1.7247 },
-      // ── Centres associats (al costat de Sant Antoni) ────────────
-      "Escola Pia Online":                   { lat: 41.3796, lng: 2.1615 },
-      "LID Barcelona":                       { lat: 41.3782, lng: 2.1615 }
+      "Escola Pia d'Igualada":              { lat: 41.5789, lng: 1.6193 },
+      "Escola Pia d'Olot":                  { lat: 42.1827, lng: 2.4902 },
+      "Escola Pia de Balaguer":              { lat: 41.7912, lng: 0.8073 },
+      "Escola Pia de Caldes de Montbui":     { lat: 41.6318, lng: 2.1671 },
+      "Escola Pia de Calella":               { lat: 41.6140, lng: 2.6578 },
+      "Escola Pia de Granollers":            { lat: 41.6074, lng: 2.2890 },
+      "Escola Pia de Mataró":                { lat: 41.5401, lng: 2.4468 },
+      "Escola Pia de Moià":                  { lat: 41.8101, lng: 2.0951 },
+      "Escola Pia de Sabadell":              { lat: 41.5471, lng: 2.1081 },
+      "Escola Pia de Salt":                  { lat: 41.9812, lng: 2.7901 },
+      "Escola Pia de Sitges":                { lat: 41.2371, lng: 1.8142 },
+      "Escola Pia de Tàrrega":               { lat: 41.6451, lng: 1.1389 },
+      "Escola Pia de Terrassa":              { lat: 41.5632, lng: 2.0091 },
+      "Escola Pia de Vilanova i la Geltrú":  { lat: 41.2251, lng: 1.7248 },
     };
 
     /* ── Constants ──────────────────────────────────────────────── */
-    const ESTAT_COLOR    = { Urgent: "#DC2626", Risc: "#F59E0B", Controlat: "#7AB53E" };
-    const ESTAT_PRIORITY = { Urgent: 0, Risc: 1, Controlat: 2 };
+    const ESTAT_COLOR    = { Critic: "#DC2626", Controlat: "#F59E0B", Optim: "#7AB53E" };
+    const ESTAT_PRIORITY = { Critic: 0, Controlat: 1, Optim: 2 };
+
+    const KPI_MODES = {
+      Obert: {
+        totalLabel: 'Total obertes',
+        cards: [
+          { id: 'critic',   label: 'Crítiques',   estat: 'Critic',    cls: 'critic',    field: 'Estat_Obert' },
+          { id: 'controlat', label: 'Controlades', estat: 'Controlat', cls: 'controlat', field: 'Estat_Obert' },
+          { id: 'optim',    label: 'Òptimes',      estat: 'Optim',     cls: 'optim',     field: 'Estat_Obert' },
+        ],
+        estatOpts: [
+          { val: 'Critic',    txt: 'Crític' },
+          { val: 'Controlat', txt: 'Controlat' },
+          { val: 'Optim',     txt: 'Òptim' },
+        ],
+        segs: [
+          { color: '#DC2626', key: 'Critic' },
+          { color: '#F59E0B', key: 'Controlat' },
+          { color: '#7AB53E', key: 'Optim' },
+        ],
+      },
+      Tancat: {
+        totalLabel: 'Total tancades',
+        cards: [
+          { id: 'critic',   label: 'Insatisfets', estat: 'Insatisfet', cls: 'critic',  field: 'Estat_Tancat' },
+          { id: 'controlat', label: 'Neutrals',   estat: 'Neutral',    cls: 'neutral', field: 'Estat_Tancat' },
+          { id: 'optim',    label: 'Satisfets',   estat: 'Satisfet',   cls: 'optim',   field: 'Estat_Tancat' },
+        ],
+        estatOpts: [
+          { val: 'Insatisfet', txt: 'Insatisfet' },
+          { val: 'Neutral',    txt: 'Neutral' },
+          { val: 'Satisfet',   txt: 'Satisfet' },
+        ],
+        segs: [
+          { color: '#DC2626', key: 'Insatisfet' },
+          { color: '#94A3B8', key: 'Neutral' },
+          { color: '#7AB53E', key: 'Satisfet' },
+        ],
+      },
+    };
 
     /* ── Estat global ───────────────────────────────────────────── */
     let allRows   = [];
     let centreGeo = {};
-    const filters = { centre: '', estat: '', mostrarTancades: false, text: '' };
+    const filters = { centre: '', estat: '', situacio: 'Obert', text: '' };
 
     /* ── Countdown ──────────────────────────────────────────────── */
     let nextRefreshAt = Date.now() + CONFIG.REFRESH_INTERVAL_MS;
@@ -571,12 +746,14 @@
 
     /* ── Filtre ─────────────────────────────────────────────────── */
     function applyFilters(rows) {
-      const q = filters.text.toLowerCase().trim();
+      const q         = filters.text.toLowerCase().trim();
+      const mode      = KPI_MODES[filters.situacio];
+      const estatField = mode.cards[0].field;
       return rows.filter(r => {
-        if (!filters.mostrarTancades && r.Situacio !== 'Obert') return false;
-        if (filters.centre && r.Centro_Escolar !== filters.centre) return false;
-        if (filters.estat  && r.Estat !== filters.estat)           return false;
-        if (q && !r.Titol_Incidencia.toLowerCase().includes(q) &&
+        if (r.Situacio !== filters.situacio) return false;
+        if (filters.centre && r.Escola !== filters.centre) return false;
+        if (filters.estat  && r[estatField] !== filters.estat) return false;
+        if (q && !r.Incidencia.toLowerCase().includes(q) &&
                  !(r.Descripcio || '').toLowerCase().includes(q)) return false;
         return true;
       });
@@ -609,38 +786,70 @@
     function refresh() {
       const filtered = applyFilters(allRows);
       renderKPIs();
+      updateEstatDropdown();
       renderMarkers();
       renderPanel(filtered);
       syncKPIActive();
       updateContextBar();
     }
 
-    /* ── KPIs (ignorant el filtre d'estat) ─────────────────────── */
+    /* ── KPIs + toggle counts ───────────────────────────────────── */
     function renderKPIs() {
-      const q = filters.text.toLowerCase().trim();
+      const q    = filters.text.toLowerCase().trim();
+      const mode = KPI_MODES[filters.situacio];
+
+      // Toggle counts (respectant filtre de centre)
+      const base_ = filters.centre ? allRows.filter(r => r.Escola === filters.centre) : allRows;
+      document.getElementById('toggle-count-obert').textContent =
+        `(${base_.filter(r => r.Situacio === 'Obert').length})`;
+      document.getElementById('toggle-count-tancat').textContent =
+        `(${base_.filter(r => r.Situacio === 'Tancat').length})`;
+
+      // Base per KPIs (aplica centre i text, no estat)
       const base = allRows.filter(r => {
-        if (r.Situacio !== 'Obert') return false;
-        if (filters.centre && r.Centro_Escolar !== filters.centre) return false;
-        if (q && !r.Titol_Incidencia.toLowerCase().includes(q) &&
+        if (r.Situacio !== filters.situacio) return false;
+        if (filters.centre && r.Escola !== filters.centre) return false;
+        if (q && !r.Incidencia.toLowerCase().includes(q) &&
                  !(r.Descripcio || '').toLowerCase().includes(q)) return false;
         return true;
       });
-      document.getElementById('kpi-total').textContent   = base.length;
-      document.getElementById('kpi-urgents').textContent = base.filter(r => r.Estat === 'Urgent').length;
-      document.getElementById('kpi-risc').textContent    = base.filter(r => r.Estat === 'Risc').length;
-      document.getElementById('kpi-control').textContent = base.filter(r => r.Estat === 'Controlat').length;
-    }
 
-    function syncKPIActive() {
-      const map_ = { total: '', urgents: 'Urgent', risc: 'Risc', control: 'Controlat' };
-      Object.entries(map_).forEach(([id, val]) => {
-        document.getElementById(`kpi-card-${id}`)
-          .classList.toggle('kpi-active', filters.estat === val);
+      document.getElementById('kpi-total').textContent = base.length;
+      document.getElementById('kpi-card-total').querySelector('.kpi-label').textContent = mode.totalLabel;
+
+      mode.cards.forEach(cfg => {
+        const card = document.getElementById(`kpi-card-${cfg.id}`);
+        // Swap color class
+        card.classList.remove('critic', 'controlat', 'optim', 'neutral');
+        card.classList.add(cfg.cls);
+        card.dataset.estat = cfg.estat;
+        card.querySelector('.kpi-label').textContent = cfg.label;
+        document.getElementById(`kpi-${cfg.id}`).textContent =
+          base.filter(r => r[cfg.field] === cfg.estat).length;
       });
     }
 
+    function syncKPIActive() {
+      const mode = KPI_MODES[filters.situacio];
+      // Total card
+      document.getElementById('kpi-card-total').classList.toggle('kpi-active', filters.estat === '');
+      mode.cards.forEach(cfg => {
+        document.getElementById(`kpi-card-${cfg.id}`)
+          .classList.toggle('kpi-active', filters.estat === cfg.estat);
+      });
+    }
+
+    /* ── Dropdown d'estat (adaptat al mode) ─────────────────────── */
+    function updateEstatDropdown() {
+      const mode = KPI_MODES[filters.situacio];
+      const sel  = document.getElementById('filter-estat');
+      sel.innerHTML = '<option value="">Tots els estats</option>' +
+        mode.estatOpts.map(o => `<option value="${o.val}">${o.txt}</option>`).join('');
+      sel.value = filters.estat;
+    }
+
     /* ── Donut icon SVG ─────────────────────────────────────────── */
-    function makeDonutIcon(stats, total, isSelected) {
+    function makeDonutIcon(stats, total, isSelected, modeSegs) {
       const size  = isSelected ? 68 : 52;
       const cx    = size / 2;
       const cy    = size / 2;
@@ -649,11 +858,8 @@
       const circ  = 2 * Math.PI * r;
 
       // Segments in priority order
-      const segs = [
-        { color: '#DC2626', n: stats.Urgent   || 0 },
-        { color: '#F59E0B', n: stats.Risc     || 0 },
-        { color: '#7AB53E', n: stats.Controlat || 0 },
-      ].filter(s => s.n > 0);
+      const segs = modeSegs.map(s => ({ color: s.color, n: stats[s.key] || 0 }))
+                            .filter(s => s.n > 0);
 
       // Build SVG arc segments using stroke-dasharray
       // rotate(-90) starts drawing from 12 o'clock
@@ -709,19 +915,22 @@
     function renderMarkers() {
       markerLayer.clearLayers();
 
-      // Aggregate open incident counts per centre
+      // Aggregate incident counts per centre (mode actual)
+      const mode      = KPI_MODES[filters.situacio];
+      const estatField = mode.cards[0].field;
+      const emptyStats = Object.fromEntries(mode.segs.map(s => [s.key, 0]));
       const stats = {};
       allRows.forEach(r => {
-        const k = r.Centro_Escolar;
-        if (!stats[k]) stats[k] = { Urgent: 0, Risc: 0, Controlat: 0, total: 0 };
-        if (r.Situacio === 'Obert' && r.Estat in stats[k]) {
-          stats[k][r.Estat]++;
-          stats[k].total++;
-        }
+        if (r.Situacio !== filters.situacio) return;
+        if (filters.centre && r.Escola !== filters.centre) return;
+        const k = r.Escola;
+        if (!stats[k]) stats[k] = { ...emptyStats, total: 0 };
+        const val = r[estatField];
+        if (val in stats[k]) { stats[k][val]++; stats[k].total++; }
       });
 
       Object.entries(centreGeo).forEach(([nom, geo]) => {
-        const s          = stats[nom] || { Urgent: 0, Risc: 0, Controlat: 0, total: 0 };
+        const s          = stats[nom] || { ...emptyStats, total: 0 };
         const total      = s.total;
         const isSelected = filters.centre === nom;
 
@@ -731,7 +940,8 @@
           refresh();
         };
 
-        // Centre with no open incidents → small neutral dot
+        // Centre sense incidències en aquest mode → punt gris petit
+        const situacioLabel = filters.situacio === 'Obert' ? 'obertes' : 'tancades';
         if (total === 0) {
           L.circleMarker([geo.lat, geo.lng], {
             radius: 5, fillColor: '#CBD5E1',
@@ -741,7 +951,7 @@
               this.bindPopup(
                 `<div style="font-family:system-ui;font-size:0.8rem">
                   <strong style="color:#1A3A6B">${nom}</strong><br>
-                  <span style="color:#94A3B8">Sense incidències obertes</span>
+                  <span style="color:#94A3B8">Sense incidències ${situacioLabel}</span>
                 </div>`
               ).openPopup();
             })
@@ -760,6 +970,10 @@
              </div>`
           : '';
 
+        const popupRows = mode.segs
+          .map(seg => row(seg.color, seg.key, s[seg.key]))
+          .join('');
+
         const popupHTML = `
           <div style="font-family:system-ui;min-width:175px;padding:2px 0">
             <div style="font-weight:700;color:#1A3A6B;font-size:0.88rem;
@@ -767,18 +981,16 @@
               ${nom}
             </div>
             <div style="display:flex;flex-direction:column;gap:5px;font-size:0.78rem">
-              ${row('#DC2626', `Urgent${s.Urgent   !== 1 ? 's' : ''}`,     s.Urgent)}
-              ${row('#F59E0B', 'En risc',                                  s.Risc)}
-              ${row('#7AB53E', `Controlat${s.Controlat !== 1 ? 'es' : ''}`, s.Controlat)}
+              ${popupRows}
             </div>
             <div style="margin-top:8px;font-size:0.72rem;color:#94A3B8">
-              ${total} incidènci${total !== 1 ? 'es' : 'a'} ober${total !== 1 ? 'tes' : 'ta'}
+              ${total} incidènci${total !== 1 ? 'es' : 'a'} ${situacioLabel}
             </div>
           </div>`;
 
         const size = isSelected ? 68 : 52;
         const icon = L.divIcon({
-          html:        makeDonutIcon(s, total, isSelected),
+          html:        makeDonutIcon(s, total, isSelected, mode.segs),
           className:   '',
           iconSize:    [size, size],
           iconAnchor:  [size / 2, size / 2],
@@ -801,8 +1013,8 @@
       list.querySelectorAll('.inc-card, .empty-state').forEach(el => el.remove());
 
       const sorted = [...filtered].sort((a, b) => {
-        const pa = (a.Situacio !== 'Obert' ? 10 : 0) + (ESTAT_PRIORITY[a.Estat] ?? 9);
-        const pb = (b.Situacio !== 'Obert' ? 10 : 0) + (ESTAT_PRIORITY[b.Estat] ?? 9);
+        const pa = ESTAT_PRIORITY[a.Estat_Obert] ?? 9;
+        const pb = ESTAT_PRIORITY[b.Estat_Obert] ?? 9;
         return pa - pb;
       });
 
@@ -832,12 +1044,13 @@
 
         const hasDesc = desc.length > 0;
 
+        const estatVal   = isTancada ? inc.Estat_Tancat : inc.Estat_Obert;
         card.innerHTML = `
           <div class="inc-card-header">
-            <span class="estat-badge ${inc.Estat}">${inc.Estat}</span>
-            <span class="inc-centre">${inc.Centro_Escolar}</span>
+            <span class="estat-badge ${estatVal}">${estatVal}</span>
+            <span class="inc-centre">${inc.Escola}</span>
           </div>
-          <div class="inc-titol">${inc.Titol_Incidencia}</div>
+          <div class="inc-titol">${inc.Incidencia}</div>
           ${hasDesc ? `<div class="inc-desc">${desc}</div>` : ''}
           <div class="inc-meta">
             <span>${inc.Responsable}</span>
@@ -870,7 +1083,7 @@
     function populateCentreDropdown() {
       const sel  = document.getElementById('filter-centre');
       // Només centres que apareixen al CSV, ordenats alfabèticament
-      const noms = [...new Set(allRows.map(r => r.Centro_Escolar).filter(Boolean))].sort();
+      const noms = [...new Set(allRows.map(r => r.Escola).filter(Boolean))].sort();
       sel.innerHTML = '<option value="">Tots els centres</option>' +
         noms.map(n => `<option value="${n}">${n}</option>`).join('');
       sel.value = filters.centre;
@@ -913,15 +1126,19 @@
     document.getElementById('filter-text').addEventListener('input', e => {
       filters.text = e.target.value; refresh();
     });
-    document.getElementById('filter-tancades').addEventListener('change', e => {
-      filters.mostrarTancades = e.target.checked; refresh();
+    document.querySelectorAll('.situacio-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        filters.situacio = btn.dataset.situacio;
+        filters.estat    = '';
+        document.querySelectorAll('.situacio-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        refresh();
+      });
     });
     document.getElementById('btn-netejar').addEventListener('click', () => {
-      filters.centre = ''; filters.estat = ''; filters.mostrarTancades = false; filters.text = '';
-      document.getElementById('filter-centre').value      = '';
-      document.getElementById('filter-estat').value       = '';
-      document.getElementById('filter-text').value        = '';
-      document.getElementById('filter-tancades').checked  = false;
+      filters.centre = ''; filters.estat = ''; filters.text = '';
+      document.getElementById('filter-centre').value = '';
+      document.getElementById('filter-text').value   = '';
       refresh();
     });
     document.querySelectorAll('.kpi-card').forEach(card => {
@@ -933,9 +1150,43 @@
       });
     });
 
+    /* ── Login ──────────────────────────────────────────────────── */
+    const PWD_HASH = '59538b0344309436ba04aeb5b1364539d9ae52b71928dabb8583d9de61b4eeec';
+    const SESSION_KEY = 'epc_auth';
+
+    async function sha256(text) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function showDashboard() {
+      document.getElementById('login-overlay').classList.add('hidden');
+    }
+
+    document.getElementById('login-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const input = document.getElementById('login-password');
+      const error = document.getElementById('login-error');
+      const hash  = await sha256(input.value);
+      if (hash === PWD_HASH) {
+        sessionStorage.setItem(SESSION_KEY, '1');
+        showDashboard();
+        fetchData();
+        setInterval(fetchData, CONFIG.REFRESH_INTERVAL_MS);
+      } else {
+        input.classList.add('error');
+        error.textContent = 'Contrasenya incorrecta';
+        input.value = '';
+        setTimeout(() => { input.classList.remove('error'); error.textContent = ''; }, 2500);
+      }
+    });
+
     /* ── Inicialització ─────────────────────────────────────────── */
-    fetchData();
-    setInterval(fetchData, CONFIG.REFRESH_INTERVAL_MS);
+    if (sessionStorage.getItem(SESSION_KEY)) {
+      showDashboard();
+      fetchData();
+      setInterval(fetchData, CONFIG.REFRESH_INTERVAL_MS);
+    }
   </script>
 
 </body>
